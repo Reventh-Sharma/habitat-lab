@@ -4,10 +4,12 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import Any
+from habitat_hitl.core.types import Keyframe
 
 
-def update_consolidated_keyframe(consolidated_keyframe, inc_keyframe):
+def update_consolidated_keyframe(
+    consolidated_keyframe: Keyframe, inc_keyframe: Keyframe
+) -> None:
     """
     A "consolidated" keyframe is several incremental keyframes merged together.
     See nearly duplicate logic in habitat-sim Recorder::addLoadsCreationsDeletions.
@@ -37,26 +39,45 @@ def update_consolidated_keyframe(consolidated_keyframe, inc_keyframe):
         for state_update in inc_keyframe["stateUpdates"]:
             key = state_update["instanceKey"]
             state = state_update["state"]
-            found = False
-            for con_state_update in consolidated_keyframe["stateUpdates"]:
-                if con_state_update["instanceKey"] == key:
-                    con_state_update["state"] = state
-                    found = True
-            if not found:
-                consolidated_keyframe["stateUpdates"].append(state_update)
+            if "stateUpdates" in consolidated_keyframe:
+                found = False
+                for con_state_update in consolidated_keyframe["stateUpdates"]:
+                    if con_state_update["instanceKey"] == key:
+                        con_state_update["state"] = state
+                        found = True
+                if not found:
+                    consolidated_keyframe["stateUpdates"].append(state_update)
+
+    # add or update instance metadata
+    if "metadata" in inc_keyframe:
+        ensure_list(consolidated_keyframe, "metadata")
+        for metadata_container in inc_keyframe["metadata"]:
+            key = metadata_container["instanceKey"]
+            metadata = metadata_container["metadata"]
+            if "metadata" in consolidated_keyframe:
+                found = False
+                for con_metadata_update in consolidated_keyframe["metadata"]:
+                    if con_metadata_update["instanceKey"] == key:
+                        con_metadata_update["metadata"] = metadata
+                        found = True
+                if not found:
+                    consolidated_keyframe["metadata"].append(
+                        metadata_container
+                    )
 
     # add or update rigUpdates
     if "rigUpdates" in inc_keyframe:
         for rig_update in inc_keyframe["rigUpdates"]:
             key = rig_update["id"]
             pose = rig_update["pose"]
-            found = False
-            for con_rig_update in consolidated_keyframe["rigUpdates"]:
-                if con_rig_update["id"] == key:
-                    con_rig_update["pose"] = pose
-                    found = True
-            if not found:
-                consolidated_keyframe["rigUpdates"].append(rig_update)
+            if "rigUpdates" in consolidated_keyframe:
+                found = False
+                for con_rig_update in consolidated_keyframe["rigUpdates"]:
+                    if con_rig_update["id"] == key:
+                        con_rig_update["pose"] = pose
+                        found = True
+                if not found:
+                    consolidated_keyframe["rigUpdates"].append(rig_update)
 
     # append creations
     if "creations" in inc_keyframe:
@@ -76,23 +97,32 @@ def update_consolidated_keyframe(consolidated_keyframe, inc_keyframe):
             # the creation and otherwise skip this deletion. This logic ensures
             # consolidated keyframes don't get bloated as many items are added
             # and removed over time.
-            con_creations = consolidated_keyframe["creations"]
-            found = False
-            for entry in con_creations:
-                if entry["instanceKey"] == key:
-                    con_creations.remove(entry)
-                    found = True
-                    break
-            if not found:
-                # if we didn't find the creation, then we should still include the deletion
-                ensure_list(consolidated_keyframe, "deletions")
-                consolidated_keyframe["deletions"].append(key)
+            if "creations" in consolidated_keyframe:
+                con_creations = consolidated_keyframe["creations"]
+                found = False
+                for entry in con_creations:
+                    if entry["instanceKey"] == key:
+                        con_creations.remove(entry)
+                        found = True
+                        break
+                if not found:
+                    # if we didn't find the creation, then we should still include the deletion
+                    ensure_list(consolidated_keyframe, "deletions")
+                    consolidated_keyframe["deletions"].append(key)
 
         # remove stateUpdates for the deleted keys
         if "stateUpdates" in consolidated_keyframe:
             consolidated_keyframe["stateUpdates"] = [
                 entry
                 for entry in consolidated_keyframe["stateUpdates"]
+                if entry["instanceKey"] not in inc_deletions
+            ]
+
+        # remove instance metadata for the deleted keys
+        if "metadata" in consolidated_keyframe:
+            consolidated_keyframe["metadata"] = [
+                entry
+                for entry in consolidated_keyframe["metadata"]
                 if entry["instanceKey"] not in inc_deletions
             ]
 
@@ -108,12 +138,13 @@ def update_consolidated_keyframe(consolidated_keyframe, inc_keyframe):
     # todo: lights, userTransforms
 
 
-def get_empty_keyframe():
-    keyframe: Any = dict()
+def get_empty_keyframe() -> Keyframe:
+    keyframe: Keyframe = dict()
     keyframe["loads"] = []
     keyframe["creations"] = []
     keyframe["rigCreations"] = []
     keyframe["stateUpdates"] = []
+    keyframe["metadata"] = []
     keyframe["rigUpdates"] = []
     keyframe["deletions"] = []
     keyframe["lightsChanged"] = False

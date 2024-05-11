@@ -9,9 +9,10 @@ import json
 import os
 import signal
 import ssl
+import traceback
 from datetime import datetime, timedelta
 from multiprocessing import Process
-from typing import Any, Dict, Optional
+from typing import Dict, List, Optional
 
 import aiohttp.web
 import websockets
@@ -27,6 +28,13 @@ from habitat_hitl._internal.networking.interprocess_record import (
 from habitat_hitl._internal.networking.keyframe_utils import (
     get_empty_keyframe,
     update_consolidated_keyframe,
+)
+from habitat_hitl.core.hydra_utils import ConfigObject
+from habitat_hitl.core.types import (
+    ClientState,
+    ConnectionRecord,
+    DisconnectionRecord,
+    Keyframe,
 )
 
 # Boolean variable to indicate whether to use SSL
@@ -107,7 +115,7 @@ class NetworkManager:
         self._waiting_for_app_ready = False
         self._recent_connection_activity_timestamp: Optional[datetime] = None
 
-    def update_consolidated_keyframes(self, keyframes) -> None:
+    def update_consolidated_keyframes(self, keyframes: List[Keyframe]) -> None:
         for inc_keyframe in keyframes:
             update_consolidated_keyframe(
                 self._consolidated_keyframe, inc_keyframe
@@ -119,7 +127,7 @@ class NetworkManager:
             self._recent_connection_activity_timestamp = datetime.now()
             try:
                 # Parse the received message as a JSON object
-                client_state = json.loads(message)
+                client_state: ClientState = json.loads(message)
 
                 client_state["connectionId"] = connection_id
 
@@ -139,9 +147,21 @@ class NetworkManager:
             and not self._waiting_for_app_ready
         )
 
+    def _check_kick_client(self):
+        kicked_user_indices = (
+            self._interprocess_record.get_queued_kick_signals()
+        )
+        # TODO: We only support 1 user at the moment.
+        if 0 in kicked_user_indices:
+            for socket in self._connected_clients.values():
+                # Don't await this; we want to keep checking keyframes.
+                # Beware that the connection will remain alive for some time after this.
+                asyncio.create_task(socket.close())
+
     async def check_keyframe_queue(self) -> None:
         # this runs continuously even when there is no client connection
         while True:
+            self._check_kick_client()
             inc_keyframes = self._interprocess_record.get_queued_keyframes()
 
             if len(inc_keyframes):
@@ -156,15 +176,6 @@ class NetworkManager:
 
                 if "message" in inc_keyframes[0]:
                     message_dict = inc_keyframes[0]["message"]
-
-                    # for kickClient, we require the requester to include the connection_id. This ensures we don't kick the wrong client. E.g. the requester recently requested to kick an idle client, but NetworkManager already dropped that client and received a new client connection.
-                    if "kickClient" in message_dict:
-                        connection_id = message_dict["kickClient"]
-                        if connection_id in self._connected_clients:
-                            print(f"kicking client {connection_id}")
-                            websocket = self._connected_clients[connection_id]
-                            # Don't await this; we want to keep checking keyframes. Beware this means the connection will remain alive for some time after this.
-                            asyncio.create_task(websocket.close())
 
                     # See hitl_defaults.yaml wait_for_app_ready_signal and ClientMessageManager.signal_app_ready
                     if (
@@ -232,17 +243,18 @@ class NetworkManager:
         print(f"Closed connection to client  {websocket.remote_address}")
         del self._connected_clients[websocket_id]
 
-    def parse_connection_record(self, message: str) -> Any:
-        connection_record = None
-        if message == "client ready!":
-            # legacy message format for initial client message
-            connection_record = {"isClientReady": True}
-        else:
-            connection_record = json.loads(message)
-            if "isClientReady" not in connection_record:
-                raise ValueError(
-                    "isClientReady key not found in initial client message."
-                )
+        disconnection_record: DisconnectionRecord = {}
+        disconnection_record["connectionId"] = websocket_id
+        self._interprocess_record.send_disconnection_record_to_main_thread(
+            disconnection_record
+        )
+
+    def parse_connection_record(self, message: str) -> ConnectionRecord:
+        connection_record: ConnectionRecord = json.loads(message)
+        if "isClientReady" not in connection_record:
+            raise ValueError(
+                "isClientReady key not found in initial client message."
+            )
         return connection_record
 
     async def handle_connection(self, websocket: ClientConnection) -> None:
@@ -274,6 +286,21 @@ class NetworkManager:
                 )
             print("Client is ready!")
             connection_record["connectionId"] = connection_id
+
+            # Copy test connection parameters from "mock_connection_params_dict".
+            if "mock_connection_params_dict" in self._networking_config:
+                mock_connection_params_dict = (
+                    self._networking_config.mock_connection_params_dict
+                )
+                if mock_connection_params_dict is not None and isinstance(
+                    mock_connection_params_dict, ConfigObject
+                ):
+                    for (
+                        key,
+                        value,
+                    ) in mock_connection_params_dict.__dict__.items():
+                        connection_record[key] = value
+
             self._interprocess_record.send_connection_record_to_main_thread(
                 connection_record
             )
@@ -365,7 +392,7 @@ async def networking_main_async(
 
     network_mgr = NetworkManager(interprocess_record)
 
-    # Start servers
+    # Start servers.
     websocket_server = await start_websocket_server(
         network_mgr, networking_config
     )
@@ -375,31 +402,60 @@ async def networking_main_async(
         else None
     )
 
-    check_keyframe_queue_task = asyncio.ensure_future(
-        network_mgr.check_keyframe_queue()
+    # Define tasks (concurrent looping coroutines).
+    tasks: List[asyncio.Future] = []
+    tasks.append(asyncio.create_task(network_mgr.check_keyframe_queue()))
+    tasks.append(
+        asyncio.create_task(network_mgr.check_close_broken_connection())
     )
 
-    check_close_broken_connection_task = asyncio.ensure_future(
-        network_mgr.check_close_broken_connection()
-    )
-
-    # Handle SIGTERM. We should get this signal when we do networking_process.terminate(). See terminate_networking_process.
+    # Handle termination signals.
+    # We should get SIGTERM when we do networking_process.terminate(). See terminate_networking_process.
     stop: asyncio.Future = asyncio.Future()
     loop = asyncio.get_event_loop()
-    loop.add_signal_handler(signal.SIGTERM, stop.set_result, None)
+    stop_signals = [
+        signal.SIGTERM,
+        signal.SIGQUIT,
+        signal.SIGINT,
+        signal.SIGHUP,
+    ]
+    for stop_signal in stop_signals:
+        loop.add_signal_handler(stop_signal, stop.set_result, None)
+    # Add the stop signal as a task.
+    tasks.append(stop)
 
-    # This await essentially means "wait forever" (or until we get SIGTERM). Meanwhile, the other tasks we've started above (websocket server, http server, check_keyframe_queue_task) will also run forever in the asyncio event loop.
-    await stop
+    # Run tasks.
+    abort = False
+    while tasks:
+        # Execute tasks until one is done (or fails).
+        done_tasks, pending = await asyncio.wait(
+            tasks, return_when=asyncio.FIRST_COMPLETED
+        )
+        for task in done_tasks:
+            # Print exception for failed tasks.
+            try:
+                await task
+            except Exception as e:
+                print(f"Exception raised in network process. Aborting: {e}.")
+                traceback.print_exc()
+                abort = True
+        # Abort if exception was raised, or if a termination signal was caught.
+        if abort or stop.done():
+            if stop.done():
+                print(f"Caught termination signal: {stop.result}.")
+            break
+        # Resume pending tasks.
+        tasks = pending
 
-    # Do cleanup code after we've received SIGTERM: close both servers and cancel check_keyframe_queue_task.
+    # Terminate network process.
+    print("Networking process terminating...")
+
+    # Close servers.
     websocket_server.close()
     await websocket_server.wait_closed()
 
     if http_runner:
         await http_runner.cleanup()
-
-    check_keyframe_queue_task.cancel()
-    check_close_broken_connection_task.cancel()
 
 
 def networking_main(interprocess_record: InterprocessRecord) -> None:
@@ -407,4 +463,4 @@ def networking_main(interprocess_record: InterprocessRecord) -> None:
     loop = asyncio.get_event_loop()
     loop.run_until_complete(networking_main_async(interprocess_record))
     loop.close()
-    print("networking_main finished")
+    print("Networking process terminated.")
