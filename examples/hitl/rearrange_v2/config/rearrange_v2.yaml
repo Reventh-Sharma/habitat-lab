@@ -10,12 +10,9 @@ habitat:
   # various config args to ensure the episode never ends
   environment:
     max_episode_steps: 0
-    # Ensure that the episode iterator can be controlled by specifying episode IDs.
     iterator_options:
-      max_scene_repeat_steps: -1
-      max_scene_repeat_episodes: -1
+      # For the demo, we want to showcase the episodes in the specified order
       shuffle: False
-      group_by_scene: False
   task:
     measurements:
       rearrange_cooperate_reward:
@@ -24,6 +21,7 @@ habitat:
         must_call_stop: False
   dataset:
     data_path: examples/hitl/rearrange_v2/app_data/demo.json.gz
+
 
 
 habitat_baselines:

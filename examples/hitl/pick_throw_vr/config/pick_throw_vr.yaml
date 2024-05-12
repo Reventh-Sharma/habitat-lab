@@ -28,7 +28,7 @@ habitat_hitl:
   networking:
     client_sync:
       # The client controls its own camera.
-      server_camera: False
+      camera_transform: False
       # This is a first-person application. We don't need to transmit skinned mesh poses.
       skinning: False
 
