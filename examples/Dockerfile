@@ -13,12 +13,12 @@ EXPOSE 8850
 # Run the specified commands
 RUN /bin/bash -c "\
     conda env remove -n habitat && \
-    conda create -n habitat python=3.9 cmake=3.14.0 && \
+    conda create -n habitat python=3.9 cmake=3.14.0 -y&& \
     echo 'source activate habitat' > ~/.bashrc && \
     /bin/bash -c \"source ~/.bashrc\" && \
-    conda install habitat-sim withbullet -c conda-forge -c aihabitat && \
+    conda install habitat-sim withbullet -c conda-forge -c aihabitat -y&& \
     cd habitat-lab && \
-    pip install -e . && \
+    pip install -e habitat-lab && \
     pip install -e habitat-baselines && \
     pip install loguru && \
     pip install jupyterlab && \

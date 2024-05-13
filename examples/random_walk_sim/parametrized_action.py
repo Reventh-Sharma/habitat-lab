@@ -6,10 +6,7 @@
 
 
 r"""
-This is an example of how to add new actions to habitat-lab
-
-
-We will use the strafe action outline in the habitat_sim example
+Class to add parametrized actions for agent
 """
 
 from dataclasses import dataclass
@@ -26,7 +23,8 @@ from loguru import logger
 # This is the configuration for our action.
 @dataclass
 class ParamaterizedActionConfig(ActionConfig):
-    move_amount: float = 0.0  # We will change this in the configuration
+    # We will change these in the configuration
+    move_amount: float = 0.0  
     turn_angle: int = 0
     straff_angle: int = 0
 
@@ -38,7 +36,7 @@ class ParamaterizedTranslation(SimulatorTaskAction):
         super().__init__(*args, config=config, sim=sim, **kwargs)
         self.move_amount = config.move_amount
 
-    # Change state of simulator by specified translation amountS
+    # Change state of simulator by specified translation amounts
     def parametrized_translation(self):
         logger.info(f"Move amount: {self.move_amount}")
         agent_state = self._sim.get_agent_state()
@@ -156,11 +154,12 @@ class ParamaterizedStraffing(SimulatorTaskAction):
         logger.info(f"Straff angle: {self.straff_angle}, Move amount: {self.move_amount}")
         # This is where the code for the new action goes. Here we use a
         # helper method but you could directly modify the simulation here.
-        if self.move_amount != 0:
+        if self.move_amount != 0 and self.straff_angle != 0:
             self.parametrized_straffing()
         else:
             self.straff_angle = 0
-            raise ValueError("Parameter move_amount needs to be non-zero for straffing")
+            self.move_amount = 0
+            raise ValueError("Parameter move_amount and/or straffe_angle needs to be non-zero for straffing")
 
 # Returns updated config with new actions registered
 def add_param_actions(config):
