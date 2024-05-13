@@ -161,6 +161,37 @@ class ParamaterizedStraffing(SimulatorTaskAction):
             self.move_amount = 0
             raise ValueError("Parameter move_amount and/or straffe_angle needs to be non-zero for straffing")
 
+# This is the configuration for our action.
+@dataclass
+class ParamaterizedChangeLocConfig(ActionConfig):
+    pos_cord = [0.0, 0.0, 0.0]
+    angle_cord = [0.0, 0.0, 0.0, 0.0]
+
+@habitat.registry.register_task_action
+class ParamaterizedChangeLocation(SimulatorTaskAction):
+    def __init__(self, *args, config, sim, **kwargs):
+        super().__init__(*args, config=config, sim=sim, **kwargs)
+        self.pos_cord = np.array([0.0, 0.0, 0.0])
+        self.angle_cord = np.array([0.0, 0.0, 0.0, 0.0])
+
+    # Change state of simulator by specified translation amountS
+    def param_change_loc(self):
+        self._sim.set_agent_state(
+            self.pos_cord,
+            self.angle_cord,
+            reset_sensors=False,
+        )
+        
+        
+    def _get_uuid(self, *args, **kwargs) -> str:
+        return "param_change_loc"
+
+    # Step method for translation
+    def step(self, pos_crd, angle_crd, **kwargs):
+        self.pos_cord = pos_crd
+        self.angle_cord = angle_crd
+        self.param_change_loc()
+
 # Returns updated config with new actions registered
 def add_param_actions(config):
 
@@ -170,6 +201,7 @@ def add_param_actions(config):
         config.habitat.task.actions["param_translate"] = ParamaterizedActionConfig(type="ParamaterizedTranslation")
         config.habitat.task.actions["param_rotate"] = ParamaterizedActionConfig(type="ParamaterizedRotation")
         config.habitat.task.actions["param_straff"] = ParamaterizedActionConfig(type="ParamaterizedStraffing")
+        config.habitat.task.actions["param_change_loc"] = ParamaterizedChangeLocConfig(type="ParamaterizedChangeLocation")
     
     return config
 
