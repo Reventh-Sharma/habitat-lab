@@ -1,7 +1,7 @@
 1) `git clone https://github.com/Reventh-Sharma/habitat-lab.git`
 2) `git clone https://github.com/Reventh-Sharma/habitat-sim`
-2) `docker run -it --runtime=nvidia -p 8850:8850 -v <currdir>:/habitat --name habitatenv_updated fairembodied/habitat-challenge:habitat_navigation_2023_base_docker`
-3) The following set of commands are to be run inside container:
+3) `docker run -it --runtime=nvidia -p 8850:8850 -v <currdir>:/habitat --name habitatenv_updated fairembodied/habitat-challenge:habitat_navigation_2023_base_docker`
+4) The following set of commands are to be run inside container:
 
     `apt-get update && apt install git-lfs -y`\
     `apt install git-lfs -y`\
@@ -17,5 +17,5 @@
     `pip install loguru`\
     `pip install jupyterlab`\
     `ipython kernel install --user --name=habitat`
-4) `python examples/data_creation/main.py --plot_save_dir examples/data_creation/output/plots --video_save_dir examples/data_creation/output/videos`
+5) `python examples/data_creation/main.py --plot_save_dir examples/data_creation/output/plots --video_save_dir examples/data_creation/output/videos`
 
