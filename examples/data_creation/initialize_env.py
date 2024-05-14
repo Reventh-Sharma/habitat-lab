@@ -1,21 +1,25 @@
 import os
+from loguru import logger
 
 import git
 
 import habitat
 
+# # Set paths
+# repo = git.Repo(".", search_parent_directories=True)
+# dir_path = repo.working_tree_dir
+# data_path = os.path.join(dir_path, "data")
+# os.chdir(dir_path)
+logger.info(f"Inside initialize_env.py: Current working directory: {os.getcwd()}")
 
-# Set paths
-repo = git.Repo(".", search_parent_directories=True)
-dir_path = repo.working_tree_dir
-data_path = os.path.join(dir_path, "data")
-os.chdir(dir_path)
-
+import sys
+sys.path.append(os.getcwd())
 # Add parametrized actions to the config
 from examples.random_walk_sim.parametrized_action import add_param_actions
 
 def define_config():
     # Config for HSSD Dataset and DDPPO model with pretrained weights (we don't use this model for now)
+    dir_path = os.getcwd()
     config = habitat.get_config(
     config_path=os.path.join(
         dir_path,

@@ -113,11 +113,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate instruction images")
 
     # Add arguments
-    parser.add_argument("config_path", type=str, help="Config to initialize habitat environment", default='')
-    parser.add_argument("source_img_path", type=str, help="Path to save the source images")
-    parser.add_argument("target_img_path", type=str, help="Path to save the target images")
-    parser.add_argument("instruction_path", type=str, help="Path to save the instructions")
-    parser.add_argument("n_samples", type=int, help="Number of samples to generate")
+    parser.add_argument("--config_path", type=str, help="Config to initialize habitat environment", default='')
+    parser.add_argument("--source_img_path", type=str, help="Path to save the source images")
+    parser.add_argument("--target_img_path", type=str, help="Path to save the target images")
+    parser.add_argument("--instruction_path", type=str, help="Path to save the instructions")
+    parser.add_argument("--n_samples", type=int, help="Number of samples to generate")
 
     # Parse the arguments
     args = parser.parse_args()
