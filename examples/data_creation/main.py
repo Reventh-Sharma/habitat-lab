@@ -72,9 +72,10 @@ def explore_paths(plot_save_dir, video_save_dir):
         images = []
         path = []
         draw_top_down_map(env, image_save_path=os.path.join(PLOTSAVE_DIR, "%02d" % episode+"topdown.png"))
+        envgoal = env.habitat_env.current_episode.goals[0]
         while not env.habitat_env.episode_over:
             best_action = follower.get_next_action(
-                env.habitat_env.current_episode.goals[0].view_points[0].agent_state.position
+                envgoal.view_points[0].agent_state.position
 
             )
             if best_action is None:
@@ -107,7 +108,7 @@ def explore_paths(plot_save_dir, video_save_dir):
         path = []
         while not env.habitat_env.episode_over:
             best_action = follower.get_next_action(
-                env.habitat_env.current_episode.goals[0].view_points[0].agent_state.position
+                envgoal.view_points[0].agent_state.position
 
             )
             if best_action is None:

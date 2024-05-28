@@ -1661,6 +1661,15 @@ class ThirdDepthSensorConfig(HabitatSimDepthSensorConfig):
     uuid: str = "third_depth"  # TODO: third_rgb on the main branch
     #  check if it won't cause any errors
 
+@dataclass
+class TopRGBSensorConfig(HabitatSimRGBSensorConfig):
+    uuid: str = "top_rgb"
+    position: List[float] = field(default_factory=lambda: [9.5, 15.0, -4.0])
+    # Euler's angles:
+    orientation: List[float] = field(default_factory=lambda: [-1.57, 0.0, 0.0])
+    width: int = 1920
+    height: int = 1080
+
 
 @dataclass
 class AgentConfig(HabitatBaseConfig):

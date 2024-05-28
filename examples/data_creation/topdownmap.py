@@ -17,10 +17,10 @@ def draw_top_down_map(env, image_save_path='images/top_down_map.png'):
                 [[255, 255, 255], [128, 128, 128], [0, 0, 0]], dtype=np.uint8
             )
     top_down_map = recolor_map[top_down_map]
+    plt.imshow(top_down_map)
+    plt.title("Top Down Map")
+    plt.show()
     if image_save_path!='':
-        plt.imshow(top_down_map)
-        plt.title("Top Down Map")
-        plt.show()
         plt.savefig(image_save_path)
     return top_down_map
 
