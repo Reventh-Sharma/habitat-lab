@@ -12,10 +12,10 @@ import habitat
 # os.chdir(dir_path)
 logger.info(f"Inside initialize_env.py: Current working directory: {os.getcwd()}")
 
-import sys
-sys.path.append(os.getcwd())
+# import sys
+# sys.path.append(os.getcwd())
 # Add parametrized actions to the config
-from examples.random_walk_sim.parametrized_action import add_param_actions
+from parametrized_action import add_param_actions
 
 def define_config():
     # Config for HSSD Dataset and DDPPO model with pretrained weights (we don't use this model for now)
@@ -51,7 +51,10 @@ class SimpleRLEnv(habitat.RLEnv):
     def get_info(self, observations):
         return self.habitat_env.get_metrics()
     
-def create_env():
+def create_env(dataset=None):
     config = define_config()
-    env = SimpleRLEnv(config=config)
+    if dataset is not None:
+        env = SimpleRLEnv(config=config, dataset=dataset)
+    else:
+        env = SimpleRLEnv(config=config)
     return env

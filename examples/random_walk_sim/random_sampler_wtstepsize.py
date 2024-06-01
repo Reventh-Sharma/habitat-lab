@@ -10,10 +10,15 @@ import habitat
 import argparse
 import git
 
+from os.path import join
+
 from parametrized_action import add_param_actions
+
+from loguru import logger
 
 repo = git.Repo(".", search_parent_directories=True)
 dir_path = repo.working_tree_dir
+logger.info(f"Directory path: {dir_path}")
 
 def display_sample(rgb_obs): 
     rgb_img = Image.fromarray(rgb_obs, mode="RGB")
@@ -104,7 +109,7 @@ def generate_instruction_images(env_config_path, n_samples, source_img_path, tar
         data.append({"source_img_path": f"{source_img_path}/img_{i}.jpg", "target_img_path": f"{target_img_path}/img_{i}.jpg", "instruction": instruction})
     
     env.close()
-    with open(instruction_path, "w") as f:
+    with open(join(instruction_path), "w") as f:
         json.dump(data, f)
 
 
@@ -132,8 +137,8 @@ if __name__ == "__main__":
     instruction_path = args.instruction_path
     if not os.path.exists(instruction_path):
         os.makedirs(instruction_path)
-    instruction_path = f"{instruction_path}/instructions.json"
+    instruction_path = join(instruction_path, "instructions.json")
 
-    n_samples = int(sys.argv[4])
+    n_samples = int(args.n_samples)
     # Call the function to generate instruction images
-    generate_instruction_images(args.config_path, args.n_samples, args.source_img_path, args.target_img_path, args.instruction_path)
+    generate_instruction_images(args.config_path, n_samples, source_img_path, target_img_path, instruction_path)
