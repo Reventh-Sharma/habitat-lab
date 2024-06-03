@@ -1,0 +1,1 @@
+1,1,1.0,30,examples/data_creation/data/eg1
