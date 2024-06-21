@@ -108,3 +108,4 @@ outputs
 examples/data_creation/output
 examples/tutorials/managed_rigid_object_tutorial_output
 examples/tutorials/shortest_path_example
+nohup*

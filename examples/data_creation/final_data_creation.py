@@ -93,6 +93,7 @@ def generate_path_traversal_data(env):
     images.append(im)
     traversal.append(tdv)
     agent_coordinates.append((env.habitat_env.sim.get_agent_state().position.tolist(), env.habitat_env.sim.get_agent_state().rotation.components.tolist()))
+    logger.info(f"CTR101: Nopath: {nopath}, Goal: {goal.object_category}")
     return nopath, goal.object_category, images, traversal, actions, agent_coordinates
 
 def save_episode_data(savelocation, images, traversal):
@@ -111,18 +112,31 @@ def create_data(savelocation, topdown3drender, targetobj, images, traversal, act
     os.makedirs(savelocation)
     topdown3drender.save(f"{savelocation}/top_down_map_3drender.png")
     savepaths_rgb, savepaths_topdown = save_episode_data(savelocation, images, traversal)
+    savepaths_rgb = ['/'.join(x.split("/")[-3:]) for x in savepaths_rgb]
+    savepaths_topdown = ['/'.join(x.split("/")[-3:]) for x in savepaths_topdown]
     images_to_video(images, f"{savelocation}/trajectoryvideo", "rgb_traj")
     images_to_video(traversal, f"{savelocation}/trajectoryvideo", "topdown_traj")
     agent_positions = [x[0] for x in agent_coordinates]
     agent_orientations = [x[1] for x in agent_coordinates]
-    data = {"target_object": targetobj, "video_rgb_traj":f"{savelocation}/trajectoryvideo/rgb_traj.mp4", "video_topdown_traj":f"{savelocation}/trajectoryvideo/topdown_traj.mp4", "env_topdown_3d_render": f"{savelocation}/top_down_map_3drender.png", "source_rgb": savepaths_rgb[0], "source_topdown": savepaths_topdown[0], "actions": actions, "targets_rgb": savepaths_rgb[1:], "targets_topdown": savepaths_topdown[1:], "agent_positions": agent_positions, "agent_orientations": agent_orientations}
+    indirsave = '/'.join(savelocation.split("/")[-2:])
+    actions.pop()
+    savepaths_rgb.pop()
+    savepaths_topdown.pop()
+    agent_positions.pop()
+    agent_orientations.pop()
+    actions = [f"The agent {x.split('_')[0]}s {x.split('_')[1]}" for x in actions]
+ 
+    data = {"target_object": targetobj, "video_rgb_traj":f"{indirsave}/trajectoryvideo/rgb_traj.mp4", "video_topdown_traj":f"{indirsave}/trajectoryvideo/topdown_traj.mp4", "env_topdown_3d_render": f"{indirsave}/top_down_map_3drender.png", "source": savepaths_rgb[0], "source_topdown": savepaths_topdown[0], "actions": actions, "targets": savepaths_rgb[1:], "targets_topdown": savepaths_topdown[1:], "agent_positions": agent_positions, "agent_orientations": agent_orientations}
     return data
 
 def create_final_data(N, M, step_size, turn_angle, svpath):
+    if os.path.exists(svpath):
+        shutil.rmtree(svpath)
+    os.makedirs(svpath)
     env = create_env(step_size, turn_angle)
     env.habitat_env._episode_from_iter_on_reset = False
     obs = env.reset()
-    data = {}
+    data = []
     i = 0
     while i<N: # Number of different scenes
         env.habitat_env.episode_iterator._forced_scene_switch()
@@ -136,9 +150,14 @@ def create_final_data(N, M, step_size, turn_angle, svpath):
             topdown3drender = get_3drendered_top_down_map(env)
             nopath, goal_cat, images, traversal, actions, agent_coordinates = generate_path_traversal_data(env)
             if not nopath:
-                data[f'scene:{ep.scene_id}, episode:{ep.episode_id}, goalid: {ep.goals[0].object_id}'] = create_data(f"{svpath}/scene_{i}/episode_{j}", topdown3drender, goal_cat, images, traversal, actions, agent_coordinates)
+                loopdict = {}
+                id = f"hssd_{ep.scene_id.split('/')[-1]}_ep{ep.episode_id}"
+                loopdict['id'] = id
+                loopdict['goalid'] = f"{ep.goals[0].object_id}"
+                loopdict.update(create_data(f"{svpath}/scene_{i}/episode_{j}", topdown3drender, goal_cat, images, traversal, actions, agent_coordinates))
+                data.append(loopdict)
             j += 1
         i += 1
-    with open(f"{svpath}/data.json", "w") as f:
-        json.dump(data, f)
-
+    with open(f"{svpath}/data.jsonl", "w") as f:
+        for d in data:
+            f.write(json.dumps(d)+"\n")
