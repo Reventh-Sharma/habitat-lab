@@ -93,7 +93,7 @@ def generate_path_traversal_data(env):
     images.append(im)
     traversal.append(tdv)
     agent_coordinates.append((env.habitat_env.sim.get_agent_state().position.tolist(), env.habitat_env.sim.get_agent_state().rotation.components.tolist()))
-    logger.info(f"CTR101: Nopath: {nopath}, Goal: {goal.object_category}")
+    # logger.info(f"CTR101: Nopath: {nopath}, Goal: {goal.object_category}")
     return nopath, goal.object_category, images, traversal, actions, agent_coordinates
 
 def save_episode_data(savelocation, images, traversal):
@@ -101,9 +101,9 @@ def save_episode_data(savelocation, images, traversal):
     savepaths_topdown = []
     for i, (im, tdv) in enumerate(zip(images, traversal)):
         Image.fromarray(im.astype(np.uint8)).save(f"{savelocation}/image_{i}.png")
-        Image.fromarray(tdv.astype(np.uint8)).save(f"{savelocation}/top_down_map_{i}.png")
+        Image.fromarray(tdv.astype(np.uint8)).save(f"{savelocation}/image_{i}_topdown.png")
         savepaths_rgb.append(f"{savelocation}/image_{i}.png")
-        savepaths_topdown.append(f"{savelocation}/top_down_map_{i}.png")
+        savepaths_topdown.append(f"{savelocation}/image_{i}_topdown.png")
     return savepaths_rgb, savepaths_topdown
 
 def create_data(savelocation, topdown3drender, targetobj, images, traversal, actions, agent_coordinates):
@@ -126,7 +126,7 @@ def create_data(savelocation, topdown3drender, targetobj, images, traversal, act
     agent_orientations.pop()
     actions = [f"The agent {x.split('_')[0]}s {x.split('_')[1]}" for x in actions]
  
-    data = {"target_object": targetobj, "video_rgb_traj":f"{indirsave}/trajectoryvideo/rgb_traj.mp4", "video_topdown_traj":f"{indirsave}/trajectoryvideo/topdown_traj.mp4", "env_topdown_3d_render": f"{indirsave}/top_down_map_3drender.png", "source": savepaths_rgb[0], "source_topdown": savepaths_topdown[0], "actions": actions, "targets": savepaths_rgb[1:], "targets_topdown": savepaths_topdown[1:], "agent_positions": agent_positions, "agent_orientations": agent_orientations}
+    data = {"target_object": targetobj, "video":f"{indirsave}/trajectoryvideo/traj.mp4", "env_topdown_3d_render": f"{indirsave}/top_down_map_3drender.png", "source": savepaths_rgb[0], "actions": actions, "target": savepaths_rgb[1:], "agent_positions": agent_positions, "agent_orientations": agent_orientations}
     return data
 
 def create_final_data(N, M, step_size, turn_angle, svpath):
