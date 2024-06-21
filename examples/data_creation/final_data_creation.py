@@ -15,7 +15,7 @@ from matplotlib import pyplot as plt
 import argparse
 from loguru import logger
 
-logger.info(f"Inside final_data_creation.py: Current working directory: {os.getcwd()}")
+# logger.info(f"Inside final_data_creation.py: Current working directory: {os.getcwd()}")
 
 from PIL import Image
 from loguru import logger
@@ -41,7 +41,7 @@ from topdownmap import draw_top_down_map, get_3drendered_top_down_map, add_path_
 
 import argparse
 
-logger.info(f"Inside main.py: Current working directory: {os.getcwd()}")
+# logger.info(f"Inside main.py: Current working directory: {os.getcwd()}")
 
 actionmap = {v: k for k, v in HabitatSimActions._known_actions.items()}
 def generate_path_traversal_data(env):
@@ -56,14 +56,14 @@ def generate_path_traversal_data(env):
     observations, reward, done, info = env.step({'action': 'param_change_loc', 'action_args': {'pos_crd': startpos, 'angle_crd': startrot}})
     # env.habitat_env.sim.set_agent_state(startpos, startrot)
     goal = env.habitat_env.current_episode.goals[0]
-    logger.info(f"Goal: {goal}")
+    # logger.info(f"Goal: {goal}")
     goal_radius = goal.radius
     if goal_radius is None:
         goal_radius = 0.25
     follower = ShortestPathFollower(
         env.habitat_env.sim, goal_radius, False
     )
-    logger.info(f"Goal: {goal}")
+    # logger.info(f"Goal: {goal}")
     while not env.habitat_env.episode_over:
         best_action = follower.get_next_action(
             goal.view_points[0].agent_state.position
@@ -136,7 +136,7 @@ def create_final_data(N, M, step_size, turn_angle, svpath):
             topdown3drender = get_3drendered_top_down_map(env)
             nopath, goal_cat, images, traversal, actions, agent_coordinates = generate_path_traversal_data(env)
             if not nopath:
-                data[f'scene:{ep.scene_id}, episode:{ep.episode_id}, goalid: {ep.goals[0].object_id}'] = create_data(f"{svpath}/episode_{i}", topdown3drender, goal_cat, images, traversal, actions, agent_coordinates)
+                data[f'scene:{ep.scene_id}, episode:{ep.episode_id}, goalid: {ep.goals[0].object_id}'] = create_data(f"{svpath}/scene_{i}/episode_{j}", topdown3drender, goal_cat, images, traversal, actions, agent_coordinates)
             j += 1
         i += 1
     with open(f"{svpath}/data.json", "w") as f:

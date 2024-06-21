@@ -1,1 +1,16 @@
-1,1,1.0,30,examples/data_creation/data/eg1
+5,6,0.5,30,examples/data_creation/data/eg11
+5,6,0.5,45,examples/data_creation/data/eg12
+5,6,0.5,60,examples/data_creation/data/eg13
+5,6,0.5,90,examples/data_creation/data/eg14
+5,6,1.0,30,examples/data_creation/data/eg21
+5,6,1.0,45,examples/data_creation/data/eg22
+5,6,1.0,60,examples/data_creation/data/eg23
+5,6,1.0,90,examples/data_creation/data/eg24
+5,6,1.5,30,examples/data_creation/data/eg31
+5,6,1.5,45,examples/data_creation/data/eg32
+5,6,1.5,60,examples/data_creation/data/eg33
+5,6,1.5,90,examples/data_creation/data/eg34
+5,6,2.0,30,examples/data_creation/data/eg41
+5,6,2.0,45,examples/data_creation/data/eg42
+5,6,2.0,60,examples/data_creation/data/eg43
+5,6,2.0,90,examples/data_creation/data/eg44
